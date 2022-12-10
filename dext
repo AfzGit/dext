@@ -62,11 +62,13 @@ MakeList()
     extnum=$(echo "$list" | wc -l)
     # loop range for list
     looplist=$(eval echo "{1..$(echo "$list" | wc -l)}")
+    # list in one line [ ... ]
+    listinline=$(echo "[$(echo $list | sed "s/\ /,\ /g")]")
 }
 
 DryRun()
 {
-    echo -e "[$(echo $list | sed "s/\ /,\ /g")]"
+    echo $listinline
 
     for n in $looplist;
     do
@@ -181,7 +183,7 @@ elif $dryrun; then
 elif $unique; then
 
     echo "=== $(echo "$list" | wc -l) Unique Extensions ==="
-    echo "[$(echo $list | sed "s/\ /,\ /g")]"
+    echo $listinline
 
 # will go here if -c or nothing is provided
 else
@@ -189,7 +191,7 @@ else
     echo "=== $extnum Unique Extensions ==="
 
     # list of extentions
-    echo -e "[$(echo $list | sed "s/\ /,\ /g")]\n"
+    echo $listinline
 
     # choice to make directories
     read -p "-> Make $extnum directories of the above extensions? [Y/n] " choice
