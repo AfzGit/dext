@@ -107,7 +107,7 @@ CopyMove()
         fileext=$(echo "$list" | sed -n "$n"p)
         $cpmv $int $ver -- *."$fileext" "$fileext"
     done
-    echo "  -> Finished working on $extnum files"
+    echo "  -> Finished working on $extnum directories"
 }
 
 #-----------------------------------------------------------
