@@ -191,7 +191,7 @@ else
     echo "=== $extnum Unique Extensions in $(pwd) ==="
 
     # list of extentions
-    echo $listinline
+    echo -e "$listinline\n"
 
     # choice to make directories
     read -p "-> Make $extnum directories of the above extensions? [Y/n] " choice
