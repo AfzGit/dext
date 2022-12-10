@@ -1,24 +1,26 @@
 #!/bin/bash
-############################################################
-# Defaults                                                 #
-############################################################
+
+#-----------------------------------------------------------
+#| DEFAULTS                                                |
+#-----------------------------------------------------------
+
 dryrun=false
 copy=false
-# int=""
-# ver=""
 unique=false
 force=false
 
-############################################################
-# Functions                                                #
-############################################################
+#-----------------------------------------------------------
+#| FUNCTIONS                                               |
+#-----------------------------------------------------------
+# Help, MakeList, DryRun, MakeDirs, CopyMove
+
 Help()
 {
    echo "Organize files having the same extension in a folder automatically"
    echo
    echo "USAGE:"
-   echo "   dtfy [OPTIONS]"
-   echo "   dtfy [OPTIONS] DIRECTORY"
+   echo "   dext [OPTIONS]"
+   echo "   dext [OPTIONS] DIRECTORY"
    echo
    echo "OPTIONS:"
    echo "   -h"
@@ -30,12 +32,14 @@ Help()
    echo "   -i"
    echo "       Interactive mode"
    echo "   -c"
-   echo "       Copy mode"
+   echo "       Copy mode (default is Move)"
    echo "   -d"
    echo "       Dry run"
    echo "   -f"
    echo "       Force move/copy files (no prompts)"
    echo
+   echo "CONTRIBUTE:"
+   echo "       https://github.com/AfzGit/dext"
 }
 
 MakeList()
@@ -54,6 +58,7 @@ MakeList()
 
 DryRun()
 {
+    echo -e "[$(echo $list | sed "s/\ /,\ /g")]"
     total=$(echo "$list" | wc -l)
 
     for n in $looplist;
@@ -63,12 +68,12 @@ DryRun()
         echo -e "\n=== $n/$total ==="
         echo "-> Making Directory \"$fakeext\""
 
-        ls *."$fakeext"
+        ls -1 *."$fakeext"
 
         if $copy; then
-            echo "-> Copying The above files to \"$fakeext\""
+            echo "-> Copying The above files to directory \"$fakeext\""
         else
-            echo "-> Moving The above files to \"$fakeext\""
+            echo "-> Moving The above files to directory \"$fakeext\""
         fi
     done
 }
@@ -78,7 +83,12 @@ MakeDirs()
     # make directories for each line of string in list
     for n in $looplist;
     do
-        mkdir $(echo "$list" | sed -n "$n"p)
+        dirname=$(echo "$list" | sed -n "$n"p)
+        if ! [[ -d "$dirname" ]]; then
+            mkdir $dirname
+        else
+            echo "  -> Directory \"$dirname\" already exists. Skipping..."
+        fi
     done
 }
 
@@ -90,47 +100,48 @@ CopyMove()
         fileext=$(echo "$list" | sed -n "$n"p)
         $cpmv $int $ver -- *."$fileext" "$fileext"
     done
-    exit
 }
 
-############################################################
-# Process the input options. Add options as needed.        #
-############################################################
+#-----------------------------------------------------------
+#| OPTIONS                                                 |
+#-----------------------------------------------------------
+
 # Get the options
 while getopts ":hudcivf" option; do
-   case $option in
-      h) # display Help
-         Help
-         exit;;
-      u) # show number of unique extensions
-         unique=true
-         ;;
-      d) # dry run
-         dryrun=true
-         ;;
-      c) # copy instead of move
-         copy=true
-         ;;
-      i) # run in interactive mode
-         int="-i"
-         ;;
-      v) # run in verbose mode
-         ver="-v"
-         ;;
-      f) # Force copy/move
-         force=true
-         ;;
-     \?) # Invalid option
-         echo "Error: Invalid option. Check help."
-         exit;;
-   esac
+    case $option in
+        h) # display Help
+            Help
+            exit;;
+        u) # show number of unique extensions
+            unique=true
+            ;;
+        d) # dry run
+            dryrun=true
+            ;;
+        c) # copy instead of move
+            copy=true
+            ;;
+        i) # run in interactive mode
+            int="-i"
+            ;;
+        v) # run in verbose mode
+            ver="-v"
+            ;;
+        f) # Force copy/move
+            force=true
+            ;;
+        \?) # Invalid option
+            echo "Error: Invalid option. Check help 'dext -h'."
+            exit;;
+    esac
 done
 
-############################################################
-# MAIN PART OF THE PROGRAM                                 #
-############################################################
-workingdir="$(echo $@ | grep -o -E "([^-][A-Za-z0-9_]|\.).*\$")"
+#-----------------------------------------------------------
+#| MAIN PART OF THE PROGRAM                                |
+#-----------------------------------------------------------
 
+# parsing command line DIRECTORY
+workingdir="$(echo $@ | grep -o -E "([^-][A-Za-z0-9_]|\.).*\$")"
 
 # cd into provided directory
 if [[ -d "$(echo $workingdir)" ]]; then
@@ -158,18 +169,17 @@ if $force; then
 
 elif $dryrun; then
 
-    echo "$list"
     DryRun
-    exit
 
 elif $unique; then
 
-    echo "$list" | wc -l
-    exit
+    echo "=== $(echo "$list" | wc -l) Unique Extensions ==="
+    echo "[$(echo $list | sed "s/\ /,\ /g")]"
 
+# will go here if -c or nothing is provided
 else
 
-    echo "$list"
+    echo -e "[$(echo $list | sed "s/\ /,\ /g")]\n"
 
     # choice to make directories
     read -p "-> Make $(echo "$list" | wc -l) directories of the above extensions? [Y/n] " choice
