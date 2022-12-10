@@ -48,10 +48,11 @@ MakeList()
 
     # exit on extension-less Directory
     if [[ -z $list ]]; then
-        echo "No file extensions detected"
-        exit
+        echo "No file extensions detected" && exit
     fi
 
+    # number of list items
+    extnum=$(echo "$list" | wc -l)
     # loop range for list
     looplist=$(eval echo "{1..$(echo "$list" | wc -l)}")
 }
@@ -59,13 +60,12 @@ MakeList()
 DryRun()
 {
     echo -e "[$(echo $list | sed "s/\ /,\ /g")]"
-    total=$(echo "$list" | wc -l)
 
     for n in $looplist;
     do
         fakeext=$(echo "$list" | sed -n "$n"p)
 
-        echo -e "\n=== $n/$total ==="
+        echo -e "\n=== $n/$extnum ==="
         echo "-> Making Directory \"$fakeext\""
 
         ls -1 *."$fakeext"
@@ -87,7 +87,7 @@ MakeDirs()
         if ! [[ -d "$dirname" ]]; then
             mkdir $dirname
         else
-            echo "  -> Directory \"$dirname\" already exists. Skipping..."
+            echo "  -> Directory exists, skipping \"$dirname\"..."
         fi
     done
 }
@@ -100,6 +100,7 @@ CopyMove()
         fileext=$(echo "$list" | sed -n "$n"p)
         $cpmv $int $ver -- *."$fileext" "$fileext"
     done
+    echo "  -> Finished working on $extnum files"
 }
 
 #-----------------------------------------------------------
@@ -149,8 +150,7 @@ if [[ -d "$(echo $workingdir)" ]]; then
 elif [[ -z $workingdir ]]; then
     cd .
 else
-    echo "$workingdir Directory not found"
-    exit
+    echo "$workingdir Directory not found" && exit
 fi
 
 MakeList
@@ -179,13 +179,15 @@ elif $unique; then
 # will go here if -c or nothing is provided
 else
 
+    echo "=== $extnum Unique Extensions ==="
+
+    # list of extentions
     echo -e "[$(echo $list | sed "s/\ /,\ /g")]\n"
 
     # choice to make directories
-    read -p "-> Make $(echo "$list" | wc -l) directories of the above extensions? [Y/n] " choice
+    read -p "-> Make $extnum directories of the above extensions? [Y/n] " choice
     if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped."
-        exit
+        echo "Stopped." && exit
     fi
     MakeDirs
     echo "  -> Directories made"
@@ -206,8 +208,7 @@ else
     fi
 
     if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped."
-        exit
+        echo "Stopped." && exit
     else
         CopyMove
     fi
