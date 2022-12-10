@@ -1,0 +1,205 @@
+#!/bin/bash
+############################################################
+# Defaults                                                 #
+############################################################
+dryrun=false
+copy=false
+# int=""
+# ver=""
+unique=false
+force=false
+
+############################################################
+# Functions                                                #
+############################################################
+Help()
+{
+   echo "Organize files having the same extension in a folder automatically"
+   echo
+   echo "USAGE:"
+   echo "   dtfy [OPTIONS]"
+   echo "   dtfy [OPTIONS] DIRECTORY"
+   echo
+   echo "OPTIONS:"
+   echo "   -h"
+   echo "       Show this help message"
+   echo "   -u"
+   echo "       Show total Unique extension"
+   echo "   -v"
+   echo "       Verbose mode"
+   echo "   -i"
+   echo "       Interactive mode"
+   echo "   -c"
+   echo "       Copy mode"
+   echo "   -d"
+   echo "       Dry run"
+   echo "   -f"
+   echo "       Force move/copy files (no prompts)"
+   echo
+}
+
+MakeList()
+{
+    list=$(ls -1 -p | grep -v / | grep -o -E "\.\w*\$" | sed "s/[\.|_]//g" | xargs -n1 | sort -u | xargs | sed "s# #\n#g")
+
+    # exit on extension-less Directory
+    if [[ -z $list ]]; then
+        echo "No file extensions detected"
+        exit
+    fi
+
+    # loop range for list
+    looplist=$(eval echo "{1..$(echo "$list" | wc -l)}")
+}
+
+DryRun()
+{
+    total=$(echo "$list" | wc -l)
+
+    for n in $looplist;
+    do
+        fakeext=$(echo "$list" | sed -n "$n"p)
+
+        echo -e "\n=== $n/$total ==="
+        echo "-> Making Directory \"$fakeext\""
+
+        ls *."$fakeext"
+
+        if $copy; then
+            echo "-> Copying The above files to \"$fakeext\""
+        else
+            echo "-> Moving The above files to \"$fakeext\""
+        fi
+    done
+}
+
+MakeDirs()
+{
+    # make directories for each line of string in list
+    for n in $looplist;
+    do
+        mkdir $(echo "$list" | sed -n "$n"p)
+    done
+}
+
+CopyMove()
+{
+    # do the copy/move
+    for n in $looplist;
+    do
+        fileext=$(echo "$list" | sed -n "$n"p)
+        $cpmv $int $ver -- *."$fileext" "$fileext"
+    done
+    exit
+}
+
+############################################################
+# Process the input options. Add options as needed.        #
+############################################################
+# Get the options
+while getopts ":hudcivf" option; do
+   case $option in
+      h) # display Help
+         Help
+         exit;;
+      u) # show number of unique extensions
+         unique=true
+         ;;
+      d) # dry run
+         dryrun=true
+         ;;
+      c) # copy instead of move
+         copy=true
+         ;;
+      i) # run in interactive mode
+         int="-i"
+         ;;
+      v) # run in verbose mode
+         ver="-v"
+         ;;
+      f) # Force copy/move
+         force=true
+         ;;
+     \?) # Invalid option
+         echo "Error: Invalid option. Check help."
+         exit;;
+   esac
+done
+
+############################################################
+# MAIN PART OF THE PROGRAM                                 #
+############################################################
+workingdir="$(echo $@ | grep -o -E "([^-][A-Za-z0-9_]|\.).*\$")"
+
+
+# cd into provided directory
+if [[ -d "$(echo $workingdir)" ]]; then
+    cd "$(echo $workingdir)"
+elif [[ -z $workingdir ]]; then
+    cd .
+else
+    echo "$workingdir Directory not found"
+    exit
+fi
+
+MakeList
+
+if $force; then
+
+    MakeDirs
+
+    if $copy; then
+        cpmv=cp
+    else
+        cpmv=mv
+    fi
+
+    CopyMove
+
+elif $dryrun; then
+
+    echo "$list"
+    DryRun
+    exit
+
+elif $unique; then
+
+    echo "$list" | wc -l
+    exit
+
+else
+
+    echo "$list"
+
+    # choice to make directories
+    read -p "-> Make $(echo "$list" | wc -l) directories of the above extensions? [Y/n] " choice
+    if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
+        echo "Stopped."
+        exit
+    fi
+    MakeDirs
+    echo "  -> Directories made"
+
+    # -c provided? yes then copy else move
+    if $copy; then
+
+        # choice to copy
+        read -p "-> Copy all files? [Y/n] " choice
+        cpmv=cp
+
+    else
+
+        # choice to move
+        read -p "-> Move all files? [Y/n] " choice
+        cpmv=mv
+
+    fi
+
+    if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
+        echo "Stopped."
+        exit
+    else
+        CopyMove
+    fi
+
+fi
