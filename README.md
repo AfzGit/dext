@@ -1,22 +1,22 @@
 
 # Table of Contents
 
-1.  [About](#org9b8edf8)
-2.  [Requirements](#orgf6f54bf)
-3.  [Installation](#org88723e8)
-4.  [Usage](#org3df9450)
-5.  [Examples](#orgdfb8c60)
+1.  [About](#org031b3e6)
+2.  [Requirements](#org45798b8)
+3.  [Installation](#orge7ed034)
+4.  [Usage](#orgfdf64c7)
+5.  [Examples](#orga6fae74)
 
 
 
-<a id="org9b8edf8"></a>
+<a id="org031b3e6"></a>
 
 # About
 
 Dext (Directories by Extensions) is a script that moves (or copies) files of the same extensions into a folder
 
 
-<a id="orgf6f54bf"></a>
+<a id="org45798b8"></a>
 
 # Requirements
 
@@ -32,7 +32,7 @@ Dext (Directories by Extensions) is a script that moves (or copies) files of the
         -   `sudo pacman -S sed`
 
 
-<a id="org88723e8"></a>
+<a id="orge7ed034"></a>
 
 # Installation
 
@@ -43,32 +43,25 @@ Dext (Directories by Extensions) is a script that moves (or copies) files of the
     sudo mv dext /usr/bin/
 
 
-<a id="org3df9450"></a>
+<a id="orgfdf64c7"></a>
 
 # Usage
 
-USAGE:
-   dext [OPTIONS]
-   dext [OPTIONS] DIRECTORY
+-   USAGE:
+    -   dext [OPTIONS]
+    -   dext [OPTIONS] DIRECTORY
 
-OPTIONS:
-   -h
-       Show this help message
-   -u
-       Show total Unique extension
-   -v
-       Verbose mode
-   -i
-       Interactive mode
-   -c
-       Copy mode (default is Move)
-   -d
-       Dry run
-   -f
-       Force move/copy files (no prompts)
+-   OPTIONS:
+    -   -h    Show this help message
+    -   -u    Show total Unique extension
+    -   -v    Verbose mode
+    -   -i    Interactive mode
+    -   -c    Copy mode (default is Move)
+    -   -d    Dry run
+    -   -f    Force move/copy files (no prompts)
 
 
-<a id="orgdfb8c60"></a>
+<a id="orga6fae74"></a>
 
 # Examples
 
