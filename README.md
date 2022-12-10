@@ -13,11 +13,11 @@
 
 # About
 
-Dext (Directories by Extensions) is a script that moves (or copies) files of the same extensions into a folder.
+Dext (Directories by Extensions) is a script that moves (or copies) files of the same extension into a folder.
 
-The main goal of this script is to make sense out of messy and unorganized files by sorting them (according to their file extensions) in folders
+The main goal of this script is to make sense out of large number of messy and unorganized files by sorting them (according to their file extensions) in folders. .
 
-Dext moves files by default unless copy option is provided (-c)
+Dext moves files by default unless copy option is provided (-c).
 
 
 <a id="orge32e026"></a>
