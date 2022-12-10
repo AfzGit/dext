@@ -24,7 +24,7 @@ Dext moves files by default unless copy option is provided (-c).
 
 # Requirements
 
--   curl
+-   curl (only for installation)
     -   Debian
         -   `sudo apt install curl`
     -   Arch
