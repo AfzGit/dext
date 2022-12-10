@@ -38,8 +38,15 @@ Help()
    echo "   -f"
    echo "       Force move/copy files (no prompts)"
    echo
+   echo "EXAMPLES:"
+   echo "   dext ~/Downloads/           # Move"
+   echo "   dext -i -v -c ~/Downloads/  # Interactive and verbose copy"
+   echo "   dext -f ~/Downloads/        # Force move"
+   echo "   dext -f -c ~/Downloads/     # Force copy"
+   echo "   dext -d ~/Downloads/        # Dry run"
+   echo
    echo "CONTRIBUTE:"
-   echo "       https://github.com/AfzGit/dext"
+   echo "   https://github.com/AfzGit/dext"
 }
 
 MakeList()
