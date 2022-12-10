@@ -13,7 +13,9 @@
 
 # About
 
-Dext (Directories by Extensions) is a script that moves (or copies) files of the same extensions into a folder
+Dext (Directories by Extensions) is a script that moves (or copies) files of the same extensions into a folder.
+
+Dext moves files by default unless copy option is provided (-c)
 
 
 <a id="orge32e026"></a>
@@ -79,3 +81,4 @@ Dext (Directories by Extensions) is a script that moves (or copies) files of the
 -   dext -d ~/Downloads/
     - Dry run
 
+Note: I am not responsible for any damages you encounter using this script
