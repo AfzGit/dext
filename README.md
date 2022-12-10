@@ -53,6 +53,7 @@ Dext (Directories by Extensions) is a script that moves (or copies) files of the
     -   dext [OPTIONS]
     -   dext [OPTIONS] DIRECTORY
 
+
 -   OPTIONS:
     -   -h    Show this help message
     -   -u    Show total Unique extension
@@ -67,9 +68,14 @@ Dext (Directories by Extensions) is a script that moves (or copies) files of the
 
 # Examples
 
--   dext ~/Downloads/           # Move
--   dext -i -v -c ~/Downloads/  # Interactive and verbose copy
--   dext -f ~/Downloads/        # Force move
--   dext -f -c ~/Downloads/     # Force copy
--   dext -d ~/Downloads/        # Dry run
+-   dext ~/Downloads/
+    - Move files into directories based on file extensions
+-   dext -i -v -c ~/Downloads/
+    - Enable Interactive and Verbose Copy
+-   dext -f ~/Downloads/
+    - Force move
+-   dext -f -c ~/Downloads/
+    - Force copy
+-   dext -d ~/Downloads/
+    - Dry run
 
