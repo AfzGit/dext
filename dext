@@ -182,13 +182,13 @@ elif $dryrun; then
 
 elif $unique; then
 
-    echo "=== $(echo "$list" | wc -l) Unique Extensions ==="
+    echo "=== $extnum Unique Extensions in $(pwd) ==="
     echo $listinline
 
 # will go here if -c or nothing is provided
 else
 
-    echo "=== $extnum Unique Extensions ==="
+    echo "=== $extnum Unique Extensions in $(pwd) ==="
 
     # list of extentions
     echo $listinline
