@@ -68,7 +68,7 @@ MakeList()
 
 DryRun()
 {
-    echo $listinline
+    echo "$listinline"
 
     for n in $looplist;
     do
@@ -183,7 +183,7 @@ elif $dryrun; then
 elif $unique; then
 
     echo "=== $extnum Unique Extensions in $(pwd) ==="
-    echo $listinline
+    echo "$listinline"
 
 # will go here if -c or nothing is provided
 else
@@ -191,12 +191,12 @@ else
     echo "=== $extnum Unique Extensions in $(pwd) ==="
 
     # list of extentions
-    echo $listinline
+    echo "$listinline"
 
     # choice to make directories
     read -p "-> Make $extnum directories of the above extensions? [Y/n] " choice
     if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped." && exit
+        echo "Stopped" && exit
     fi
     MakeDirs
     echo "  -> Directories made"
@@ -217,7 +217,7 @@ else
     fi
 
     if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped." && exit
+        echo "Stopped" && exit
     else
         CopyMove
     fi
