@@ -74,17 +74,25 @@ DryRun()
     do
         fakeext=$(echo "$list" | sed -n "$n"p)
 
-        echo -e "\n=== $n/$extnum ==="
-        echo "-> Making Directory \"$fakeext\""
+        echo -e "\n[$n/$extnum] $fakeext "
+        echo -e "============"
+        # echo "-> Making Directory \"$fakeext\""
 
         ls -1 *."$fakeext"
 
-        if $copy; then
-            echo "-> Copying The above files to directory \"$fakeext\""
-        else
-            echo "-> Moving The above files to directory \"$fakeext\""
-        fi
+        echo -e "============"
+
     done
+
+    echo
+
+    if $copy; then
+        echo "-> COPYING The above files"
+    else
+        echo "-> MOVING The above files"
+    fi
+
+    echo "-> Directories = $listinline"
 }
 
 MakeDirs()
