@@ -68,7 +68,7 @@ Clone the repository:
 git clone https://github.com/AfzGit/dext.git
 chmod +x dext/dext
 sudo mv dext/dext /usr/local/bin/
-rm dext/ -r # Remove cloned repository
+rm -r -f dext/ # Remove cloned repository
 ```
 
 ---
