@@ -12,76 +12,124 @@ force=false
 #-----------------------------------------------------------
 #| FUNCTIONS                                               |
 #-----------------------------------------------------------
-# Help, MakeList, DryRun, MakeDirs, CopyMove
+# Help, MakeList, DryRun, MakeDirs, CopyMove, _uniqname, _cpmv
 
 Help()
 {
-   echo "Organize files having the same extension in a folder automatically"
-   echo
-   echo "USAGE:"
-   echo "   dext [OPTIONS]"
-   echo "   dext [OPTIONS] DIRECTORY"
-   echo
-   echo "OPTIONS:"
-   echo "   -h"
-   echo "       Show this help message"
-   echo "   -u"
-   echo "       Show total Unique extension"
-   echo "   -v"
-   echo "       Verbose mode"
-   echo "   -i"
-   echo "       Interactive mode"
-   echo "   -c"
-   echo "       Copy mode (default is Move)"
-   echo "   -d"
-   echo "       Dry run"
-   echo "   -f"
-   echo "       Force move/copy files (no prompts)"
-   echo
-   echo "EXAMPLES:"
-   echo "   dext ~/Downloads/           # Move"
-   echo "   dext -i -v -c ~/Downloads/  # Interactive and verbose copy"
-   echo "   dext -f ~/Downloads/        # Force move"
-   echo "   dext -f -c ~/Downloads/     # Force copy"
-   echo "   dext -d ~/Downloads/        # Dry run"
-   echo
-   echo "CONTRIBUTE:"
-   echo "   https://github.com/AfzGit/dext"
+    echo "Organize files having the same extension in a folder automatically"
+    echo
+    echo "USAGE:"
+    echo "   dext [OPTIONS]"
+    echo "   dext [OPTIONS] DIRECTORY"
+    echo
+    echo "OPTIONS:"
+    echo "   -h"
+    echo "       Show this help message"
+    echo "   -u"
+    echo "       Show total Unique extensions"
+    echo "   -v"
+    echo "       Verbose mode"
+    echo "   -c"
+    echo "       Copy mode (default is Move)"
+    echo "   -d"
+    echo "       Dry run"
+    echo "   -f"
+    echo "       Force move/copy files (no prompts; rename all conflicts)"
+    echo
+    echo "EXAMPLES:"
+    echo "   dext ~/Downloads/           # Move"
+    echo "   dext -v -c ~/Downloads/     # Verbose copy"
+    echo "   dext -f ~/Downloads/        # Force move"
+    echo "   dext -f -c ~/Downloads/     # Force copy"
+    echo "   dext -d ~/Downloads/        # Dry run"
+    echo
+    echo "CONTRIBUTE:"
+    echo "   https://github.com/AfzGit/dext"
 }
 
+#-----------------------------------------------------------
+#| MAKE LIST                                                |
+#-----------------------------------------------------------
 MakeList()
 {
-    list=$(ls -1 -p | grep -v / | grep -o -E "\.\w*\$" | sed "s/[\.|_]//g" | xargs -n1 | sort -u | xargs | sed "s# #\n#g")
+    local file ext
 
-    # exit on extension-less Directory
-    if [[ -z $list ]]; then
-        echo "No file extensions detected" && exit
+    extensions=()
+    declare -A seen_extensions=()
+
+    shopt -s nullglob
+
+    for file in *; do
+        [[ -f $file ]] || continue
+
+        if [[ $file =~ \.([[:alnum:]_]+)$ ]]; then
+            ext=${BASH_REMATCH[1]}
+
+            # Preserve original Dext behavior.
+            ext=${ext//_/}
+
+            [[ -n $ext ]] || continue
+
+            if [[ -z ${seen_extensions[$ext]+x} ]]; then
+                seen_extensions["$ext"]=1
+                extensions+=("$ext")
+            fi
+        fi
+    done
+
+    shopt -u nullglob
+
+    if ((${#extensions[@]} == 0)); then
+        echo "No file extensions detected"
+        exit
     fi
 
-    # number of list items
-    extnum=$(echo "$list" | wc -l)
-    # loop range for list
-    looplist=$(eval echo "{1..$(echo "$list" | wc -l)}")
-    # list in one line [ ... ]
-    listinline=$(echo "[$(echo $list | sed "s/\ /,\ /g")]")
+    # Keep the original alphabetical sorting.
+    mapfile -t extensions < <(
+        printf '%s\n' "${extensions[@]}" | sort
+    )
+
+    extnum=${#extensions[@]}
+
+    # Build [ext1, ext2, ext3]
+    listinline="["
+    local i
+
+    for i in "${!extensions[@]}"; do
+        ((i > 0)) && listinline+=", "
+        listinline+=${extensions[i]}
+    done
+
+    listinline+="]"
 }
+
+#-----------------------------------------------------------
+#| DRY RUN                                                  |
+#-----------------------------------------------------------
 
 DryRun()
 {
-    echo $listinline
+    local n ext file
+    local -a files
 
-    for n in $looplist;
-    do
-        fakeext=$(echo "$list" | sed -n "$n"p)
+    echo "$listinline"
 
-        echo -e "\n[$n/$extnum] $fakeext "
-        echo -e "============"
-        # echo "-> Making Directory \"$fakeext\""
+    for n in "${!extensions[@]}"; do
+        ext=${extensions[n]}
 
-        ls -1 *."$fakeext"
+        echo
+        echo "[$((n + 1))/$extnum] $ext"
+        echo "============"
 
-        echo -e "============"
+        shopt -s nullglob
+        files=( *."$ext" )
+        shopt -u nullglob
 
+        if ((${#files[@]})); then
+            printf '%s\n' "${files[@]}"
+        fi
+
+        echo "============"
     done
 
     echo
@@ -95,139 +143,387 @@ DryRun()
     echo "-> Directories = $listinline"
 }
 
+#-----------------------------------------------------------
+#| MAKE DIRECTORIES                                         |
+#-----------------------------------------------------------
+
 MakeDirs()
 {
-    # make directories for each line of string in list
-    for n in $looplist;
-    do
-        dirname=$(echo "$list" | sed -n "$n"p)
-        if ! [[ -d "$dirname" ]]; then
-            mkdir $dirname
+    local ext
+
+    for ext in "${extensions[@]}"; do
+        if [[ ! -d $ext ]]; then
+            mkdir -- "$ext"
         else
-            echo "  -> Directory exists, skipping \"$dirname\"..."
+            echo "  -> Directory exists, skipping \"$ext\"..."
         fi
     done
 }
 
+#-----------------------------------------------------------
+#| UNIQUE NAME                                               |
+#-----------------------------------------------------------
+# Generate a destination name that does not already exist
+# and has not already been claimed during this operation.
+#
+# Examples:
+#
+#   movie.mkv
+#   movie (1).mkv
+#   movie (2).mkv
+#
+_uniqname()
+{
+    local -n _u_claimed=$1
+    local -n _u_out=$4
+
+    local _u_dir=$2
+    local _u_base=$3
+
+    local _u_stub
+    local _u_ext
+    local _u_cand=$_u_base
+    local _u_c=0
+
+    [[ $_u_base =~ ^(\.)?([^.]*)(.*)$ ]]
+
+    _u_stub=${BASH_REMATCH[1]}${BASH_REMATCH[2]}
+    _u_ext=${BASH_REMATCH[3]}
+
+    while [[ -e "$_u_dir/$_u_cand" ||
+             -v '_u_claimed[$_u_cand]' ]]; do
+        ((++_u_c))
+        _u_cand="$_u_stub ($_u_c)$_u_ext"
+    done
+
+    _u_claimed["$_u_cand"]=1
+    _u_out=$_u_cand
+}
+
+#-----------------------------------------------------------
+#| COPY / MOVE                                               |
+#-----------------------------------------------------------
+# Safely copy/move files.
+#
+# Files that do not need renaming are batched into a single
+# cp/mv command.
+#
+# Files requiring a unique name are handled individually.
+#
+_cpmv()
+{
+    local cmd=$1
+    shift
+
+    if (($# < 2)); then
+        echo "${cmd}: usage: ${cmd} <source...> <destination>" >&2
+        return 1
+    fi
+
+    local -a extra=()
+    local -a batch=()
+    local -a sources=()
+
+    local dest
+    local src
+    local base
+    local cand
+    local answer
+
+    local failed=0
+
+    case $cmd in
+        cp)
+            extra+=(-a)
+            ;;
+        mv)
+            ;;
+        *)
+            echo "Unsupported command: $cmd" >&2
+            return 1
+            ;;
+    esac
+
+    $verbose && extra+=(-v)
+
+    # Last argument is the destination.
+    dest=${!#}
+
+    # Everything before it is a source.
+    sources=("${@:1:$#-1}")
+
+    if [[ ! -d $dest ]]; then
+        echo "${cmd}: destination is not a directory: $dest" >&2
+        return 1
+    fi
+
+    # Names already reserved during this operation.
+    local -A claimed=()
+
+    # State for interactive collision handling.
+    local rename_all=false
+    local skip_all=false
+
+    for src in "${sources[@]}"; do
+
+        base=${src##*/}
+
+        _uniqname claimed "$dest" "$base" cand
+
+        #---------------------------------------------------
+        #| NO COLLISION
+        #---------------------------------------------------
+        #
+        # Batch these later for efficiency.
+        #
+        if [[ $cand == "$base" ]]; then
+            batch+=("$src")
+            continue
+        fi
+
+        #---------------------------------------------------
+        #| SKIP ALL
+        #---------------------------------------------------
+
+        if $skip_all; then
+            unset 'claimed[$cand]'
+            continue
+        fi
+
+        #---------------------------------------------------
+        #| FORCE / RENAME ALL
+        #---------------------------------------------------
+
+        if ! $force && ! $rename_all; then
+
+            while true; do
+                printf 'Rename "%s" → "%s"? [Y/n/a/s] ' \
+                    "$base" "$cand"
+
+                read -r answer
+
+                case ${answer:-Y} in
+
+                    Y|y)
+                        break
+                        ;;
+
+                    n|N)
+                        unset 'claimed[$cand]'
+                        cand=
+                        break
+                        ;;
+
+                    a|A)
+                        rename_all=true
+                        break
+                        ;;
+
+                    s|S)
+                        unset 'claimed[$cand]'
+                        cand=
+                        skip_all=true
+                        break
+                        ;;
+
+                    *)
+                        echo "Please answer Y, n, a, or s."
+                        ;;
+                esac
+            done
+        fi
+
+        # User selected n/s.
+        [[ -n $cand ]] || continue
+
+        #---------------------------------------------------
+        #| RENAME/COPY INDIVIDUAL CONFLICT
+        #---------------------------------------------------
+
+        if $copy; then
+            cp "${extra[@]}" -- "$src" "$dest/$cand" || failed=1
+        else
+            mv "${extra[@]}" -- "$src" "$dest/$cand" || failed=1
+        fi
+    done
+
+    #-------------------------------------------------------
+    #| BATCH NON-CONFLICTING FILES
+    #-------------------------------------------------------
+
+    if ((${#batch[@]})); then
+        if $copy; then
+            cp "${extra[@]}" -- "${batch[@]}" "$dest" || failed=1
+        else
+            mv "${extra[@]}" -- "${batch[@]}" "$dest" || failed=1
+        fi
+    fi
+
+    return "$failed"
+}
+
+#-----------------------------------------------------------
+#| COPY / MOVE FILES                                        |
+#-----------------------------------------------------------
+
 CopyMove()
 {
-    # do the copy/move
-    for n in $looplist;
-    do
-        fileext=$(echo "$list" | sed -n "$n"p)
-        $cpmv $int $ver -- *."$fileext" "$fileext"
+    local ext
+    local -a files
+
+    for ext in "${extensions[@]}"; do
+
+        shopt -s nullglob
+        files=( *."$ext" )
+        shopt -u nullglob
+
+        ((${#files[@]})) || continue
+
+        if $copy; then
+            _cpmv cp "${files[@]}" "$ext"
+        else
+            _cpmv mv "${files[@]}" "$ext"
+        fi
     done
+
     echo "  -> Finished working on $extnum directories"
 }
 
 #-----------------------------------------------------------
-#| OPTIONS                                                 |
+#| OPTIONS                                                   |
 #-----------------------------------------------------------
 
-# Get the options
-while getopts ":hudcivf" option; do
+while getopts ":hudcvf" option; do
     case $option in
-        h) # display Help
+
+        h)
             Help
-            exit;;
-        u) # show number of unique extensions
+            exit
+            ;;
+
+        u)
             unique=true
             ;;
-        d) # dry run
+
+        d)
             dryrun=true
             ;;
-        c) # copy instead of move
+
+        c)
             copy=true
             ;;
-        i) # run in interactive mode
-            int="-i"
+
+        v)
+            verbose=true
             ;;
-        v) # run in verbose mode
-            ver="-v"
-            ;;
-        f) # Force copy/move
+
+        f)
             force=true
             ;;
-        \?) # Invalid option
+
+        \?)
             echo "Error: Invalid option. Check help 'dext -h'."
-            exit;;
+            exit 1
+            ;;
     esac
 done
 
+shift $((OPTIND - 1))
+
 #-----------------------------------------------------------
-#| MAIN PART OF THE PROGRAM                                |
+#| MAIN                                                      |
 #-----------------------------------------------------------
 
-# parsing command line DIRECTORY
-workingdir="$(echo $@ | grep -o -E "([^-][A-Za-z0-9_]|\.).*\$")"
-
-# cd into provided directory
-if [[ -d "$(echo $workingdir)" ]]; then
-    cd "$(echo $workingdir)"
-elif [[ -z $workingdir ]]; then
-    cd .
-else
-    echo "$workingdir Directory not found" && exit
+# Dext accepts zero or one directory argument.
+if (($# > 1)); then
+    echo "Error: too many arguments. Check help 'dext -h'."
+    exit 1
 fi
+
+workingdir=${1:-.}
+
+if [[ ! -d $workingdir ]]; then
+    echo "$workingdir Directory not found"
+    exit 1
+fi
+
+cd -- "$workingdir" || exit 1
 
 MakeList
 
+#-----------------------------------------------------------
+#| FORCE MODE                                                |
+#-----------------------------------------------------------
+# -f skips all normal confirmation prompts and automatically
+# accepts all collision renames.
+#
 if $force; then
 
     MakeDirs
-
-    if $copy; then
-        cpmv=cp
-    else
-        cpmv=mv
-    fi
-
     CopyMove
+
+#-----------------------------------------------------------
+#| DRY RUN                                                   |
+#-----------------------------------------------------------
 
 elif $dryrun; then
 
     DryRun
 
+#-----------------------------------------------------------
+#| UNIQUE EXTENSIONS                                         |
+#-----------------------------------------------------------
+
 elif $unique; then
 
     echo "=== $extnum Unique Extensions in $(pwd) ==="
-    echo $listinline
+    echo "$listinline"
 
-# will go here if -c or nothing is provided
+#-----------------------------------------------------------
+#| NORMAL MODE                                               |
+#-----------------------------------------------------------
+
 else
 
     echo "=== $extnum Unique Extensions in $(pwd) ==="
+    echo
+    echo "$listinline"
+    echo
 
-    # list of extentions
-    echo -e "$listinline\n"
+    #-------------------------------------------------------
+    #| DIRECTORY CONFIRMATION
+    #-------------------------------------------------------
 
-    # choice to make directories
-    read -p "-> Make $extnum directories of the above extensions? [Y/n] " choice
-    if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped." && exit
+    read -r -p \
+        "-> Make $extnum directories of the above extensions? [Y/n] " \
+        choice
+
+    if [[ -n $choice && $choice != Y && $choice != y ]]; then
+        echo "Stopped."
+        exit
     fi
+
     MakeDirs
     echo "  -> Directories made"
 
-    # -c provided? yes then copy else move
+    #-------------------------------------------------------
+    #| COPY / MOVE CONFIRMATION
+    #-------------------------------------------------------
+
     if $copy; then
 
-        # choice to copy
-        read -p "-> Copy all files? [Y/n] " choice
-        cpmv=cp
+        read -r -p "-> Copy all files? [Y/n] " choice
 
     else
 
-        # choice to move
-        read -p "-> Move all files? [Y/n] " choice
-        cpmv=mv
+        read -r -p "-> Move all files? [Y/n] " choice
 
     fi
 
-    if ! [[ -z "$choice" || "$choice" = "Y" || "$choice" = "y" ]]; then
-        echo "Stopped." && exit
-    else
-        CopyMove
+    if [[ -n $choice && $choice != Y && $choice != y ]]; then
+        echo "Stopped."
+        exit
     fi
 
+    CopyMove
 fi
