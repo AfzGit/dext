@@ -163,14 +163,11 @@ MakeDirs()
 #-----------------------------------------------------------
 #| UNIQUE NAME                                               |
 #-----------------------------------------------------------
-# Generate a destination name that does not already exist
-# and has not already been claimed during this operation.
+# Find a destination name that does not already exist and
+# has not already been claimed during this operation.
 #
-# Examples:
-#
-#   movie.mkv
-#   movie (1).mkv
-#   movie (2).mkv
+# This function ONLY finds a name. It does not claim it.
+# The caller claims the name after deciding to use it.
 #
 _uniqname()
 {
@@ -196,27 +193,27 @@ _uniqname()
         _u_cand="$_u_stub ($_u_c)$_u_ext"
     done
 
-    _u_claimed["$_u_cand"]=1
     _u_out=$_u_cand
 }
+
 
 #-----------------------------------------------------------
 #| COPY / MOVE                                               |
 #-----------------------------------------------------------
-# Safely copy/move files.
+# Collision modes:
 #
-# Files that do not need renaming are batched into a single
-# cp/mv command.
-#
-# Files requiring a unique name are handled individually.
+#   ask     Ask [Y/n/a/s]
+#   rename  Rename all collisions
+#   skip    Skip all collisions
 #
 _cpmv()
 {
     local cmd=$1
-    shift
+    local -n _cpmv_collision_mode=$2
+    shift 2
 
     if (($# < 2)); then
-        echo "${cmd}: usage: ${cmd} <source...> <destination>" >&2
+        echo "${cmd}: usage: ${cmd} <collision_mode> <source...> <destination>" >&2
         return 1
     fi
 
@@ -229,7 +226,6 @@ _cpmv()
     local base
     local cand
     local answer
-
     local failed=0
 
     case $cmd in
@@ -257,87 +253,103 @@ _cpmv()
         return 1
     fi
 
-    # Names already reserved during this operation.
+    # Names already used/claimed during this operation.
     local -A claimed=()
-
-    # State for interactive collision handling.
-    local rename_all=false
-    local skip_all=false
 
     for src in "${sources[@]}"; do
 
         base=${src##*/}
 
-        _uniqname claimed "$dest" "$base" cand
-
         #---------------------------------------------------
         #| NO COLLISION
         #---------------------------------------------------
-        #
-        # Batch these later for efficiency.
-        #
-        if [[ $cand == "$base" ]]; then
+
+        if [[ ! -e "$dest/$base" &&
+              ! -v 'claimed[$base]' ]]; then
+
             batch+=("$src")
+            claimed["$base"]=1
+
             continue
         fi
 
         #---------------------------------------------------
-        #| SKIP ALL
+        #| FIND UNIQUE NAME
         #---------------------------------------------------
 
-        if $skip_all; then
-            unset 'claimed[$cand]'
-            continue
-        fi
+        _uniqname claimed "$dest" "$base" cand
 
         #---------------------------------------------------
-        #| FORCE / RENAME ALL
+        #| COLLISION MODE
         #---------------------------------------------------
 
-        if ! $force && ! $rename_all; then
+        case $_cpmv_collision_mode in
 
-            while true; do
-                printf 'Rename "%s" → "%s"? [Y/n/a/s] ' \
-                    "$base" "$cand"
+            #-----------------------------------------------
+            #| SKIP ALL
+            #-----------------------------------------------
 
-                read -r answer
+            skip)
+                continue
+                ;;
 
-                case ${answer:-Y} in
+            #-----------------------------------------------
+            #| RENAME ALL
+            #-----------------------------------------------
 
-                    Y|y)
-                        break
-                        ;;
+            rename)
+                ;;
 
-                    n|N)
-                        unset 'claimed[$cand]'
-                        cand=
-                        break
-                        ;;
+            #-----------------------------------------------
+            #| ASK
+            #-----------------------------------------------
 
-                    a|A)
-                        rename_all=true
-                        break
-                        ;;
+            ask)
+                while true; do
 
-                    s|S)
-                        unset 'claimed[$cand]'
-                        cand=
-                        skip_all=true
-                        break
-                        ;;
+                    printf 'Rename "%s" → "%s"? [Y/n/a/s] ' \
+                        "$base" "$cand"
 
-                    *)
-                        echo "Please answer Y, n, a, or s."
-                        ;;
-                esac
-            done
-        fi
+                    read -r answer
 
-        # User selected n/s.
+                    case ${answer:-Y} in
+
+                        Y|y)
+                            break
+                            ;;
+
+                        n|N)
+                            cand=
+                            break
+                            ;;
+
+                        a|A)
+                            _cpmv_collision_mode=rename
+                            break
+                            ;;
+
+                        s|S)
+                            _cpmv_collision_mode=skip
+                            cand=
+                            break
+                            ;;
+
+                        *)
+                            echo "Please answer Y, n, a, or s."
+                            ;;
+                    esac
+                done
+                ;;
+        esac
+
+        # User selected n or s.
         [[ -n $cand ]] || continue
 
+        # Claim the name only after accepting it.
+        claimed["$cand"]=1
+
         #---------------------------------------------------
-        #| RENAME/COPY INDIVIDUAL CONFLICT
+        #| PERFORM RENAMED OPERATION
         #---------------------------------------------------
 
         if $copy; then
@@ -352,11 +364,13 @@ _cpmv()
     #-------------------------------------------------------
 
     if ((${#batch[@]})); then
+
         if $copy; then
             cp "${extra[@]}" -- "${batch[@]}" "$dest" || failed=1
         else
             mv "${extra[@]}" -- "${batch[@]}" "$dest" || failed=1
         fi
+
     fi
 
     return "$failed"
@@ -371,6 +385,20 @@ CopyMove()
     local ext
     local -a files
 
+    # This state deliberately lives outside _cpmv().
+    #
+    # It therefore persists across ALL extensions, meaning:
+    #
+    #   a = rename all remaining conflicts
+    #   s = skip all remaining conflicts
+    #
+    local collision_mode=ask
+
+    # -f is equivalent to choosing "a" immediately.
+    if $force; then
+        collision_mode=rename
+    fi
+
     for ext in "${extensions[@]}"; do
 
         shopt -s nullglob
@@ -380,9 +408,9 @@ CopyMove()
         ((${#files[@]})) || continue
 
         if $copy; then
-            _cpmv cp "${files[@]}" "$ext"
+            _cpmv cp collision_mode "${files[@]}" "$ext"
         else
-            _cpmv mv "${files[@]}" "$ext"
+            _cpmv mv collision_mode "${files[@]}" "$ext"
         fi
     done
 
