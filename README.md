@@ -1,4 +1,4 @@
-> ⚠️  ALERT: For more feature rich `dext` with cross-platform support, sorting by time, size, and extension, recursive directory sorting, please have a look at the newer: [files-sort-py](https://github.com/AfzGit/Files-Sort-py)
+> ⚠️  ALERT: For a more feature rich `dext` with cross-platform support, sorting by {time, size, extension}, recursive directory sorting, please have a look at the newer: [files-sort-py](https://github.com/AfzGit/Files-Sort-py)
 
 # Dext
 
