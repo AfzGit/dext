@@ -1,3 +1,5 @@
+> ⚠️  ALERT: For cross-platform support, sorting by time, size, and extension, recursive directory sorting, please have a look at the newer: [files-sort-py](https://github.com/AfzGit/Files-Sort-py)
+
 # Dext
 
 **Dext** automatically organizes files into directories based on their file extensions.
