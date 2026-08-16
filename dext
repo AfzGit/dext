@@ -267,6 +267,7 @@ _cpmv()
         #---------------------------------------------------
 
         if [[ ! -e "$dest/$base" &&
+        	  ! -L "$dest/$base" &&
               ! -v 'claimed[$base]' ]]; then
 
             batch+=("$src")
