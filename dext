@@ -188,6 +188,7 @@ _uniqname()
     _u_ext=${BASH_REMATCH[3]}
 
     while [[ -e "$_u_dir/$_u_cand" ||
+		     -L "$_u_dir/$_u_cand" ||
              -v '_u_claimed[$_u_cand]' ]]; do
         ((++_u_c))
         _u_cand="$_u_stub ($_u_c)$_u_ext"
@@ -233,6 +234,7 @@ _cpmv()
             extra+=(-a)
             ;;
         mv)
+        	extra+=(-n)
             ;;
         *)
             echo "Unsupported command: $cmd" >&2
