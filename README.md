@@ -46,6 +46,8 @@ Dext can either **move** or **copy** files and safely handles filename conflicts
 * Interactive collision handling
 * Supports filenames containing spaces and special characters
 
+> 📝 Note: Symlinks present are ignored and not proc
+
 ---
 
 ## Installation
