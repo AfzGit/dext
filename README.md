@@ -50,7 +50,7 @@ Dext can either **move** or **copy** files and safely handles filename conflicts
 
 ## Installation
 
-Just grab `dext` file from the respository, make it executable, and store it in your `$PATH`
+Just grab `dext` file from the repository, make it executable, and store it in your `$PATH`
 
 ### Using `curl`
 
@@ -363,4 +363,3 @@ Runs without any external dependencies on modern Linux distros.
 Bash 4+ is required because Dext uses associative arrays and namerefs for safe filename tracking.
 
 > Note: One thing I'd specifically **not** document anymore is `-i`: it has been removed because collision prompts are now part of normal Dext behavior. `-f` is the explicit way to suppress those prompts and choose **rename-all** automatically.
-
